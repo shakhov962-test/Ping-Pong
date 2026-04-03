@@ -1,8 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <unistd.h>
 
 #define WIDTH 80
 #define HEIGHT 25
@@ -54,16 +50,16 @@ void draw(const GameState *g) {
                 printf("|");
             } else if (x == 1) {
                 if (y >= g->left_y && y < g->left_y + PADDLE_HEIGHT)
-                    printf("#");
+                    printf("|");
                 else
                     printf(" ");
             } else if (x == WIDTH - 2) {
                 if (y >= g->right_y && y < g->right_y + PADDLE_HEIGHT)
-                    printf("#");
+                    printf("|");
                 else
                     printf(" ");
             } else if (x == g->ball_x && y == g->ball_y) {
-                printf("O");
+                printf("@");
             } else {
                 printf(" ");
             }
@@ -83,7 +79,7 @@ void draw(const GameState *g) {
 char get_input() {
     char c = getchar();
     while (getchar() != '\n');
-    return toupper(c);
+    return c;
 }
 
 void update_game(GameState *g) {
