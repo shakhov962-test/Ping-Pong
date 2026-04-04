@@ -1,195 +1,168 @@
-#include <ncurses.h>
-#include <unistd.h>
-#include <stdlib.h>
+#include <stdio.h>
 
-// --- Глобальные переменные состояния игры ---
-int height, width;
-int left_paddle_y, right_paddle_y;
-int ball_x, ball_y;
-int ball_dx, ball_dy;
-int left_score, right_score;
-int game_over;
+int main() {
+    // --- КОНСТАНТЫ  ---
+    const int WIDTH = 80;
+    const int HEIGHT = 25;
+    const int PADDLE_HEIGHT = 3;
+    const int WIN_SCORE = 21;
 
-// --- Константы ---
-#define WINNING_SCORE 3
-#define PADDLE_HEIGHT 3
-#define PADDLE_LEFT_X 1
-#define PADDLE_RIGHT_X 0 // Будет рассчитываться как width - 2
+    // --- ПЕРЕМЕННЫЕ СОСТОЯНИЯ ИГРЫ ---
+    int left_y = (HEIGHT - PADDLE_HEIGHT) / 2;
+    int right_y = (HEIGHT - PADDLE_HEIGHT) / 2;
+    int ball_x = WIDTH / 2;
+    int ball_y = HEIGHT / 2;
+    int ball_dx = -1;  // Направление мяча по X
+    int ball_dy = 0;   // Направление мяча по Y
+    int score_left = 0;
+    int score_right = 0;
 
-// --- Инициализация игры ---
-void init_game()
-{
-    getmaxyx(stdscr, height, width);
+    // --- ИГРОВОЙ ЦИКЛ ---
+    while (score_left < WIN_SCORE && score_right < WIN_SCORE) {
+        // --- ОТРИСОВКА ЭКРАНА ---
+        printf("\033[2J\033[H");  // Очистка экрана и перевод курсора в начало
 
-    // Позиции по центру
-    left_paddle_y = height / 2 - PADDLE_HEIGHT / 2;
-    right_paddle_y = height / 2 - PADDLE_HEIGHT / 2;
-    ball_x = width / 2;
-    ball_y = height / 2;
-
-    // Начальное направление мяча: вправо и вверх
-    ball_dx = 1;
-    ball_dy = -1;
-
-    left_score = 0;
-    right_score = 0;
-    game_over = 0;
-}
-
-// --- Функция отрисовки ---
-void draw()
-{
-    clear();
-
-    // Границы поля
-    border(0, 0, 0, 0, 0, 0, 0, 0);
-
-    // Счет
-    mvprintw(0, width / 2 - 5, "Score: %d | %d", left_score, right_score);
-
-    // Ракетки (рисуем блок из PADDLE_HEIGHT символов)
-    for (int i = 0; i < PADDLE_HEIGHT; i++)
-    {
-        mvaddch(left_paddle_y + i, PADDLE_LEFT_X, '|');
-        mvaddch(right_paddle_y + i, width - PADDLE_LEFT_X - 1, '|');
-    }
-
-    // Мяч
-    mvaddch(ball_y, ball_x, 'O');
-
-    // Сообщение о конце игры
-    if (game_over)
-    {
-        mvprintw(height / 2, width / 2 - 10, "Game Over! Press 'q' to quit.");
-    }
-
-    refresh();
-}
-
-// --- Обработка ввода ---
-void handle_input()
-{
-    int key = getch(); // Ждем нажатия клавиши (пошаговый режим)
-
-    if (game_over)
-    {
-        if (key == 'q')
-        {
-            endwin();
-            exit(0);
+        // Верхняя граница
+        for (int x = 0; x < WIDTH; x++) {
+            printf("%c", (x == 0 || x == WIDTH - 1) ? '|' : '-');
         }
-        return; // Если игра окончена, не обрабатываем движения
-    }
+        printf("\n");
 
-    switch (key)
-    {
-    // Игрок слева (A/Z)
-    case 'a':
-        if (left_paddle_y > 1)
-            left_paddle_y--;
-        break;
-    case 'z':
-        if (left_paddle_y < height - PADDLE_HEIGHT - 1)
-            left_paddle_y++;
-        break;
-
-    // Игрок справа (K/M)
-    case 'k':
-        if (right_paddle_y > 1)
-            right_paddle_y--;
-        break;
-    case 'm':
-        if (right_paddle_y < height - PADDLE_HEIGHT - 1)
-            right_paddle_y++;
-        break;
-
-    case ' ': // Space Bar - пропуск хода. Просто перерисуем экран.
-        break;
-    case 'q':
-        endwin();
-        exit(0);
-    default:
-        break;
-    }
-}
-
-// --- Логика движения мяча ---
-void move_ball()
-{
-    if (game_over)
-        return; // Не двигаем мяч после конца игры
-
-    ball_x += ball_dx;
-    ball_y += ball_dy;
-
-    // Отскок от верхней и нижней стенок
-    if (ball_y <= 1 || ball_y >= height - 2)
-    {
-        ball_dy = -ball_dy;
-    }
-
-    // Отскок от правой ракетки (игрок K/M)
-    if (ball_x == width - PADDLE_LEFT_X - 1)
-    {
-        for (int i = 0; i < PADDLE_HEIGHT; i++)
-        {
-            if (ball_y == right_paddle_y + i)
-            {
-                ball_dx = -ball_dx; // Меняем направление на левое
-                return;             // Столкновение произошло, выходим из функции
+        // Игровое поле
+        for (int y = 0; y < HEIGHT; y++) {
+            for (int x = 0; x < WIDTH; x++) {
+                if (x == 0 || x == WIDTH - 1) {
+                    printf("|");
+                } else if (x == 1) {
+                    printf("%c", (y >= left_y && y < left_y + PADDLE_HEIGHT) ? '|' : ' ');
+                } else if (x == WIDTH - 2) {
+                    printf("%c", (y >= right_y && y < right_y + PADDLE_HEIGHT) ? '|' : ' ');
+                } else if (x == ball_x && y == ball_y) {
+                    printf("@");
+                } else {
+                    printf(" ");
+                }
             }
+            printf("\n");
         }
-        // Если цикл завершился без return, значит мяч пролетел мимо ракетки
-        left_score++;
-        if (left_score >= WINNING_SCORE)
-            game_over = 1;
-        init_game(); // Сброс позиций для нового раунда
-        return;
-    }
 
-    // Отскок от левой ракетки (игрок A/Z)
-    if (ball_x == PADDLE_LEFT_X + 1)
-    {
-        for (int i = 0; i < PADDLE_HEIGHT; i++)
-        {
-            if (ball_y == left_paddle_y + i)
-            {
-                ball_dx = -ball_dx; // Меняем направление на правое
-                return;             // Столкновение произошло, выходим из функции
-            }
+        // Нижняя граница
+        for (int x = 0; x < WIDTH; x++) {
+            printf("%c", (x == 0 || x == WIDTH - 1) ? '|' : '-');
         }
-        // Если цикл завершился без return, значит мяч пролетел мимо ракетки
-        right_score++;
-        if (right_score >= WINNING_SCORE)
-            game_over = 1;
-        init_game(); // Сброс позиций для нового раунда
+        printf("\n");
+
+        // Счёт
+        printf("Счёт: Игрок 1 — %d | Игрок 2 — %d\n", score_left, score_right);
+
+        // --- ВВОД ДАННЫХ ---
+        printf("Игрок 1 (A/Z), Игрок 2 (K/M): ");
+        char input = getchar();
+        while (getchar() != '\n');  // Очистка буфера ввода
+
+        // Движение левой ракетки (Игрок 1)
+        if ((input == 'A' || input == 'a') && left_y > 0) {
+            left_y--;
+        }
+        if ((input == 'Z' || input == 'z') && left_y + PADDLE_HEIGHT < HEIGHT) {
+            left_y++;
+        }
+
+        // Движение правой ракетки (Игрок 2)
+        if ((input == 'K' || input == 'k') && right_y > 0) {
+            right_y--;
+        }
+        if ((input == 'M' || input == 'm') && right_y + PADDLE_HEIGHT < HEIGHT) {
+            right_y++;
+        }
+
+        // --- ЛОГИКА ДВИЖЕНИЯ МЯЧА ---
+
+        // Вычисляем следующую позицию мяча
+        int new_ball_x = ball_x + ball_dx;
+        int new_ball_y = ball_y + ball_dy;
+
+        // Проверка гола слева
+        if (new_ball_x < 1) {
+            score_right++;
+            // Сброс раунда
+            left_y = (HEIGHT - PADDLE_HEIGHT) / 2;
+            right_y = (HEIGHT - PADDLE_HEIGHT) / 2;
+            ball_x = WIDTH / 2;
+            ball_y = HEIGHT / 2;
+            ball_dx = -1;
+            ball_dy = 0;
+            continue;  // Пропускаем остальную логику и начинаем новый цикл
+        }
+
+        // Проверка гола справа
+        if (new_ball_x > WIDTH - 2) {
+            score_left++;
+            // Сброс раунда
+            left_y = (HEIGHT - PADDLE_HEIGHT) / 2;
+            right_y = (HEIGHT - PADDLE_HEIGHT) / 2;
+            ball_x = WIDTH / 2;
+            ball_y = HEIGHT / 2;
+            ball_dx = -1;
+            ball_dy = 0;
+            continue;  // Пропускаем остальную логику и начинаем новый цикл
+        }
+
+        // Отскок от левой ракетки
+        if (new_ball_x == 1 && ball_y >= left_y && ball_y < left_y + PADDLE_HEIGHT) {
+            ball_dx = 1;  // Меняем направление на право
+
+            // Задаём угол отскока в зависимости от места удара по ракетке
+            if (ball_y < left_y + 1)
+                ball_dy = -1;
+            else if (ball_y > left_y + 1)
+                ball_dy = 1;
+            else
+                ball_dy = 0;
+
+            new_ball_x += ball_dx;  // Сразу сдвигаем мяч на один шаг вправо, чтобы он не застрял в ракетке
+            new_ball_y += ball_dy;
+        }
+
+        // Отскок от правой ракетки
+        if (new_ball_x == WIDTH - 2 && ball_y >= right_y && ball_y < right_y + PADDLE_HEIGHT) {
+            ball_dx = -1;  // Меняем направление на лево
+
+            if (ball_y < right_y + 1)
+                ball_dy = -1;
+            else if (ball_y > right_y + 1)
+                ball_dy = 1;
+            else
+                ball_dy = 0;
+
+            new_ball_x += ball_dx;  // Сразу сдвигаем мяч на один шаг влево
+            new_ball_y += ball_dy;
+        }
+
+        // Отскок от верхней и нижней стенок
+        if (new_ball_y <= 0 || new_ball_y >= HEIGHT - 1) {
+            ball_dy = -ball_dy;  // Инвертируем вертикальное направление
+
+            // Вычисляем финальную позицию с учётом отскока от стены,
+            // чтобы мяч не "застрял" внутри стенки на следующем шаге.
+            new_ball_x += ball_dx;
+            new_ball_y += ball_dy;
+        }
+
+        // Обновляем координаты мяча на новые вычисленные значения
+        ball_x = new_ball_x;
+        ball_y = new_ball_y;
+
+        // Задержка для плавности игры
+        for (volatile int i = 0; i < 500000; i++);
     }
-}
 
-// --- Точка входа ---
-int main()
-{
-    initscr();              // Инициализация ncurses
-    cbreak();               // Отключаем буферизацию ввода (не нужен Enter)
-    noecho();               // Не выводим нажатые клавиши на экран
-    keypad(stdscr, TRUE);   // Включаем обработку спец. клавиш (стрелки)
-    nodelay(stdscr, FALSE); // Режим блокировки getch() до нажатия клавиши (пошагово)
-    curs_set(0);            // Скрываем курсор
+    // --- КОНЕЦ ИГРЫ ---
+    printf("\nИгра окончена!\n");
+    if (score_left >= WIN_SCORE)
+        printf("Победил Игрок 1! Счёт: %d\n", score_left);
+    else
+        printf("Победил Игрок 2! Счёт: %d\n", score_right);
 
-    init_game(); // Устанавливаем начальные значения
-
-    while (1)
-    {
-        handle_input(); // Ждем действия игрока и обновляем позиции ракеток
-        move_ball();    // Обновляем позицию мяча и проверяем столкновения/голы
-
-        draw(); // Перерисовываем экран с новыми данными
-
-        usleep(50000); // Задержка для плавности анимации (~50 мс)
-                       // В пошаговом режиме она не обязательна для логики,
-                       // но делает игру визуально приятнее.
-    }
-
-    endwin(); // Корректное завершение ncurses
     return 0;
 }
